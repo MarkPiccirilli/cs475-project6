@@ -21,13 +21,15 @@
 #include "helper_functions.h"
 #include "helper_cuda.h"
 
+//random number functions
+#include "randomNumberFunctions.hpp"
 
 #ifndef BLOCKSIZE
 #define BLOCKSIZE		32		// number of threads per block
 #endif
 
 #ifndef NUMTRIALS
-#define NUMTRIALS		64000		// to make the timing more accurate
+#define NUMTRIALS		64000		// number of trials in simulation.
 #endif
 
 #ifndef NUMTRIES
@@ -62,6 +64,8 @@ __global__  void MonteCarlo( float *xcs, float *ycs, float *rs, float* numHits )
 
 	float xc = xcs[gid];
 	float yc = ycs[gid];
+	float r = rs[gid];
+
 	float a = 2.;
 	float b = -2.*(xc + yc);
 	float c = xc*xc + yc*yc - r*r;
@@ -139,30 +143,30 @@ __global__  void MonteCarlo( float *xcs, float *ycs, float *rs, float* numHits )
 int
 main( int argc, char* argv[ ] )
 {
-	int dev = findCudaDevice(argc, (const char **)argv);
+	//int dev = findCudaDevice(argc, (const char **)argv);
 
 	// allocate host memory:
 
 	float * hxcs = new float [ NUMTRIALS ];
 	float * hycs = new float [ NUMTRIALS ];
-	float * hrc = new float [ NUMTRIALS ];
+	float * hrs = new float [ NUMTRIALS ];
 	int * hnumHits = new int [ NUMTRIALS/BLOCKSIZE ];
 
 	for( int i = 0; i < NUMTRIALS; i++ )
 	{
-		hxcs[n] = Ranf(XCMIN, XCMAX);
-		hycs[n] = Ranf(YCMIN, YCMAX);
-		rs[n] = Ranf(RMIN, RMAX);
+		hxcs[i] = Ranf(XCMIN, XCMAX);
+		hycs[i] = Ranf(YCMIN, YCMAX);
+		hrs[i] = Ranf(RMIN, RMAX);
 	}
 
 	// allocate device memory:
 
 	float *dxcs, *dycs, *drs, *dnumHits;
 
-	dim3 dimsA( NUMTRIALS, 1, 1 );
-	dim3 dimsB( NUMTRIALS, 1, 1 );
-	dim3 dimsC( NUMTRIALS, 1, 1 );
-	dim3 dimsD( SIZE/BLOCKSIZE, 1, 1 );
+	dim3 dimsxcs( NUMTRIALS, 1, 1 );
+	dim3 dimsycs( NUMTRIALS, 1, 1 );
+	dim3 dimsrs( NUMTRIALS, 1, 1 );
+	dim3 dimsnumHits( NUMTRIALS/BLOCKSIZE, 1, 1 );
 
 	//__shared__ float prods[SIZE/BLOCKSIZE];
 
@@ -172,15 +176,15 @@ main( int argc, char* argv[ ] )
 		checkCudaErrors( status );
 	status = cudaMalloc( reinterpret_cast<void **>(&dycs), NUMTRIALS*sizeof(float) );
 		checkCudaErrors( status );
-	status = cudaMalloc( reinterpret_cast<void **>(&drsx), NUMTRIALS*sizeof(float) );
+	status = cudaMalloc( reinterpret_cast<void **>(&drs), NUMTRIALS*sizeof(float) );
 		checkCudaErrors( status );
-	status = cudaMalloc( reinterpret_cast<void **>(&dnumHits), (SIZE/BLOCKSIZE)*sizeof(int) );
+	status = cudaMalloc( reinterpret_cast<void **>(&dnumHits), (NUMTRIALS/BLOCKSIZE)*sizeof(int) );
 		checkCudaErrors( status );
 
 
 	// copy host memory to the device:
 
-	status = cudaMemcpy( dxcs, hxcs, NUMTRAILS*sizeof(float), cudaMemcpyHostToDevice );
+	status = cudaMemcpy( dxcs, hxcs, NUMTRIALS*sizeof(float), cudaMemcpyHostToDevice );
 		checkCudaErrors( status );
 	status = cudaMemcpy( dycs, hycs, NUMTRIALS*sizeof(float), cudaMemcpyHostToDevice );
 		checkCudaErrors( status );
@@ -211,9 +215,9 @@ main( int argc, char* argv[ ] )
 
 	// execute the kernel:
 
-	for( int t = 0; t < NUMTRIALS; t++)
+	for( int t = 0; t < NUMTRIES; t++)
 	{
-	        MonteCarlo<<< grid, threads >>>( dxcs, dycs, drcs, dnumHits );
+	        MonteCarlo<<< grid, threads >>>( dxcs, dycs, drs, dnumHits );
 	}
 
 	// record the stop event:
@@ -230,32 +234,29 @@ main( int argc, char* argv[ ] )
 	status = cudaEventElapsedTime( &msecTotal, start, stop );
 		checkCudaErrors( status );
 
-	// compute and print the performance
+	// compute the performance
 
 	double secondsTotal = 0.001 * (double)msecTotal;
 	double trailsPerSecond = (float)NUMTRIALS * (float)NUMTRIES / secondsTotal;
-	double megaTrailsPerSecond = trailsPerSecond / 1000000.;
-	fprintf( stderr, "Number of trials = %10d, MegaTrials/Second = %10.2lf\n", NUMTRIALS, megaTrialsPerSecond );
+	double megaTrialsPerSecond = trailsPerSecond / 1000000.;
 
 	// copy result from the device to the host:
 
-	status = cudaMemcpy( hnumHits, dnumHits, (SIZE/BLOCKSIZE)*sizeof(int), cudaMemcpyDeviceToHost );
+	status = cudaMemcpy( hnumHits, dnumHits, (NUMTRIALS/BLOCKSIZE)*sizeof(int), cudaMemcpyDeviceToHost );
 		checkCudaErrors( status );
 
-	// check the sum :
-
+	// calculate numHits:
 	int numHits = 0;
 	for(int i = 0; i < NUMTRIALS/BLOCKSIZE; i++ )
 	{
 		//fprintf(stderr, "hnumHits[%6d] = %d\n", i, hnumHits[i]);
 		numHits += hnumHits[i];
 	}
-	fprintf( stderr, "\nnumHits = %ld\n", numHits );
 	
 	//calculate frequency
 	float frequency = numHits/NUMTRIALS;
 
-	printf("frequency = %lf\n", frequency);
+	printf( "%10d\t%d\t%10.2lf\t%d\t%f\n", NUMTRIALS, BLOCKSIZE, megaTrialsPerSecond, numHits, frequency );
 
 	// clean up memory:
 	delete [ ] hxcs;
