@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 //function prototypes
 float Ranf( float low, float high );
