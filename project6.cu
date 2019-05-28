@@ -79,14 +79,7 @@ __global__  void MonteCarlo( float *xcs, float *ycs, float *rs, float* numHits )
 	d = sqrt(d);
 	float t1 = (-b + d)/(2.*a);
 	float t2 = (-b - d)/(2.*a);
-	float tmin;
-	//float tmin = t1 < t2 ? t1 : t2;
-	if(t1 < t2) {
-		tmin = t1;
-	} 
-	else {
-		tmin = t2;
-	}
+	float tmin = t1 < t2 ? t1 : t2;
 
 	if(tmin < 0) {
 		//circle engulfs laser
@@ -143,7 +136,7 @@ __global__  void MonteCarlo( float *xcs, float *ycs, float *rs, float* numHits )
 int
 main( int argc, char* argv[ ] )
 {
-	//int dev = findCudaDevice(argc, (const char **)argv);
+	int dev = findCudaDevice(argc, (const char **)argv);
 
 	// allocate host memory:
 
@@ -256,7 +249,7 @@ main( int argc, char* argv[ ] )
 	//calculate frequency
 	float frequency = numHits/NUMTRIALS;
 
-	printf( "%10d\t%d\t%10.2lf\t%d\t%f\n", NUMTRIALS, BLOCKSIZE, megaTrialsPerSecond, numHits, frequency );
+	fprintf( stderr, "%10d\t%d\t%10.2lf\t%d\t%f\n", NUMTRIALS, BLOCKSIZE, megaTrialsPerSecond, numHits, frequency );
 
 	// clean up memory:
 	delete [ ] hxcs;
