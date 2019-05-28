@@ -4,7 +4,7 @@ import os
 os.system("rm project6")
 
 blocksize = [16, 32, 64]
-numTrails = [16000, 32000, 64000, 128000, 256000, 512000]
+numTrails = [16384, 32768, 65536, 131072, 262144, 524288]
 
 print("NumTrials\tBlockSize\tPerformance\tNumHits\tFrequency")
 
