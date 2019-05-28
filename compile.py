@@ -12,8 +12,8 @@ for b in blocksize:
 	for n in numTrails:
 		cmd = "touch project6.cu"
 		os.system(cmd)
-		cmd="make CXXFLAGS=-DBLOCKSIZE=%d CXXFLAGS+=-DNUMTRIALS=%d >> make_output.txt" % (b, n)
+		cmd="make CXXFLAGS=-DBLOCKSIZE=%d CXXFLAGS+=-DNUMTRIALS=%d > make_output.txt" % (b, n)
 		os.system(cmd)
-		cmd="./project6"
+		cmd="./project6 > stdout.txt"
 		os.system(cmd)
 
