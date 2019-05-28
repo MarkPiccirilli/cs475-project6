@@ -50,9 +50,9 @@ const float RMAX = 2.0;
 
 // Monte Carlo Simulation
 
-__global__  void MonteCarlo( float *xcs, float *ycs, float *rs, float* numHits )
+__global__  void MonteCarlo( float *xcs, float *ycs, float *rs, int* numHits )
 {
-	__shared__ float hits[BLOCKSIZE];
+	__shared__ int hits[BLOCKSIZE];
 
 	unsigned int numItems = blockDim.x;
 	unsigned int tnum = threadIdx.x;
@@ -154,7 +154,8 @@ main( int argc, char* argv[ ] )
 
 	// allocate device memory:
 
-	float *dxcs, *dycs, *drs, *dnumHits;
+	float *dxcs, *dycs, *drs;
+	int *dnumHits;
 
 	dim3 dimsxcs( NUMTRIALS, 1, 1 );
 	dim3 dimsycs( NUMTRIALS, 1, 1 );
@@ -247,7 +248,7 @@ main( int argc, char* argv[ ] )
 	}
 	
 	//calculate frequency
-	float frequency = numHits/NUMTRIALS;
+	float frequency = (float)numHits/(float)NUMTRIALS;
 
 	fprintf( stderr, "%10d\t%d\t%10.2lf\t%d\t%f\n", NUMTRIALS, BLOCKSIZE, megaTrialsPerSecond, numHits, frequency );
 
